@@ -192,6 +192,12 @@ h3 {
   gap: 16px;
 }
 
+.status-stack {
+  display: grid;
+  gap: 8px;
+  justify-items: end;
+}
+
 .score-chip {
   min-width: 86px;
   border-radius: 8px;
@@ -201,6 +207,27 @@ h3 {
   text-align: center;
   font-size: 1.35rem;
   font-weight: 800;
+}
+
+.timer-chip {
+  min-width: 86px;
+  border-radius: 8px;
+  background: #fff8dc;
+  border: 1px solid #eed889;
+  padding: 10px 14px;
+  text-align: center;
+  font-size: 1.45rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.timer-safe {
+  color: #bd8600;
+}
+
+.timer-over {
+  color: var(--rose);
 }
 
 .progress-bar {
