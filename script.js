@@ -52,7 +52,12 @@ const state = {
   total: 3,
   current: 0,
   questions: [],
+  timerId: null,
+  timerStartedAt: 0,
 };
+
+const TIMER_LIMIT_MS = 10 * 60 * 1000;
+const TIMER_WARNING_MS = 60 * 1000;
 
 const setupPanel = document.querySelector("#setupPanel");
 const workPanel = document.querySelector("#workPanel");
@@ -63,6 +68,7 @@ const decreaseBtn = document.querySelector("#decreaseBtn");
 const increaseBtn = document.querySelector("#increaseBtn");
 const progressText = document.querySelector("#progressText");
 const questionTitle = document.querySelector("#questionTitle");
+const timerDisplay = document.querySelector("#timerDisplay");
 const currentScore = document.querySelector("#currentScore");
 const progressFill = document.querySelector("#progressFill");
 const questionList = document.querySelector("#questionList");
@@ -94,6 +100,7 @@ function createQuestionState() {
     checked: Array(checklist.length).fill(false),
     memo: "",
     answered: false,
+    elapsedMs: 0,
   };
 }
 
@@ -124,6 +131,63 @@ function renderQuestionList() {
     });
     questionList.append(button);
   });
+}
+
+function timerValue(question) {
+  const activeElapsed =
+    state.timerStartedAt > 0 ? performance.now() - state.timerStartedAt : 0;
+  return Math.min(TIMER_LIMIT_MS, question.elapsedMs + activeElapsed);
+}
+
+function formatTimer(ms) {
+  if (ms >= TIMER_LIMIT_MS) return "9.99";
+
+  const totalSeconds = Math.floor(ms / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes}.${String(seconds).padStart(2, "0")}`;
+}
+
+function renderTimer() {
+  const question = state.questions[state.current];
+  const elapsed = timerValue(question);
+  timerDisplay.textContent = formatTimer(elapsed);
+  timerDisplay.classList.toggle("timer-safe", elapsed <= TIMER_WARNING_MS);
+  timerDisplay.classList.toggle("timer-over", elapsed > TIMER_WARNING_MS);
+
+  if (elapsed >= TIMER_LIMIT_MS) {
+    stopTimer();
+    question.elapsedMs = TIMER_LIMIT_MS;
+    timerDisplay.textContent = formatTimer(TIMER_LIMIT_MS);
+  }
+}
+
+function startTimer() {
+  stopTimer();
+  const question = state.questions[state.current];
+
+  if (question.elapsedMs >= TIMER_LIMIT_MS) {
+    renderTimer();
+    return;
+  }
+
+  state.timerStartedAt = performance.now();
+  renderTimer();
+  state.timerId = window.setInterval(renderTimer, 100);
+}
+
+function stopTimer() {
+  if (state.timerId) {
+    window.clearInterval(state.timerId);
+    state.timerId = null;
+  }
+
+  if (state.timerStartedAt > 0 && state.questions[state.current]) {
+    const question = state.questions[state.current];
+    question.elapsedMs = timerValue(question);
+  }
+
+  state.timerStartedAt = 0;
 }
 
 function renderChecks() {
@@ -168,15 +232,18 @@ function renderWork() {
   renderQuestionList();
   renderChecks();
   updateScoreDisplays();
+  startTimer();
 }
 
 function saveCurrentQuestion(markAnswered = true) {
+  stopTimer();
   const question = state.questions[state.current];
   question.memo = memoInput.value;
   if (markAnswered) question.answered = true;
 }
 
 function showPanel(panel) {
+  if (panel !== workPanel) stopTimer();
   [setupPanel, workPanel, resultPanel].forEach((element) => element.classList.add("hidden"));
   panel.classList.remove("hidden");
 }
@@ -248,6 +315,7 @@ memoInput.addEventListener("input", () => {
 });
 
 resetQuestionBtn.addEventListener("click", () => {
+  stopTimer();
   state.questions[state.current] = createQuestionState();
   renderWork();
 });
